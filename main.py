@@ -47,9 +47,12 @@ def load_data(file_path):
 
 df = load_data("HR_comma_sep.csv")
 
-# Ensure the dataset contains the necessary column
-if "attrition" not in df.columns:
-    st.error(f"Dataset Error: 'attrition' column is missing. Please check the dataset.\n\nAvailable columns: {list(df.columns)}")
+# Ensure the dataset contains required columns
+required_columns = {"attrition", "time_spend_company", "department", "salary", "satisfaction_level"}
+missing_columns = required_columns - set(df.columns)
+
+if missing_columns:
+    st.error(f"Dataset Error: Missing columns: {missing_columns}. Please check the dataset.")
     st.stop()
 
 # --- Train Model ---

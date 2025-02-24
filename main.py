@@ -122,45 +122,42 @@ if page == "Home":
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- Attrition Prediction (Now Fully Working!) ---
+# --- Attrition Prediction ---
 if page == "Attrition Prediction":
     st.markdown('<div class="main-container">', unsafe_allow_html=True)
     st.header("🔮 Employee Attrition Prediction")
     st.write("Predict whether an employee is likely to stay or leave based on key HR metrics.")
 
-    # Input Fields
     with st.form("predict_employee_attrition"):
         satisfaction_level = st.slider('Satisfaction Level', 0.0, 1.0, 0.5)
         last_evaluation = st.slider('Last Evaluation Score', 0.0, 1.0, 0.6)
         avg_monthly_hours = st.number_input('Average Monthly Hours', min_value=50, max_value=320, step=1, value=160)
         time_in_company = st.number_input('Years at Company', min_value=1, max_value=20, step=1, value=5)
         salary_category = st.selectbox("Salary Level", options=["Low", "Medium", "High"])
-        
+
         predict_button = st.form_submit_button(label='🔍 Predict')
 
         if predict_button:
-            # Encode Salary
             salary_mapping = {"Low": [1, 0], "Medium": [0, 1], "High": [0, 0]}
             salary_encoded = salary_mapping[salary_category]
+            input_features = np.array([satisfaction_level, last_evaluation, avg_monthly_hours, time_in_company] + salary_encoded).reshape(1, -1)
 
-            # Create Feature Array
-            input_features = [satisfaction_level, last_evaluation, avg_monthly_hours, time_in_company] + salary_encoded
+            expected_features = X_test.shape[1]
+            input_shape = input_features.shape[1]
 
-            # Make Prediction
-            prediction_result = model.predict([input_features])[0]
-            prediction_proba = np.round(model.predict_proba([input_features]) * 100, 2)
-
-            # Display Results
-            st.markdown("***")
-            col1, col2 = st.columns(2)
-
-            if prediction_result == 0:
-                col1.success("✅ Employee is predicted to **STAY**.")
+            if input_shape != expected_features:
+                st.error(f"Feature Mismatch! Expected {expected_features} features but got {input_shape}. Please check input fields.")
             else:
-                col1.error("🚨 Employee is predicted to **LEAVE**.")
+                prediction_result = model.predict(input_features)[0]
+                prediction_proba = np.round(model.predict_proba(input_features) * 100, 2)
 
-            col2.metric("Probability to Stay", f"{prediction_proba[0, 0]}%")
-            col2.metric("Probability to Leave", f"{prediction_proba[0, 1]}%")
+                col1, col2 = st.columns(2)
+                if prediction_result == 0:
+                    col1.success("✅ Employee is predicted to **STAY**.")
+                else:
+                    col1.error("🚨 Employee is predicted to **LEAVE**.")
+
+                col2.metric("Probability to Stay", f"{prediction_proba[0, 0]}%")
+                col2.metric("Probability to Leave", f"{prediction_proba[0, 1]}%")
 
     st.markdown('</div>', unsafe_allow_html=True)
-

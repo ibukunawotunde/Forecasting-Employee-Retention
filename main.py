@@ -104,7 +104,7 @@ model, X_test, y_test = train_model(df)
 # --- Home Page ---
 if page == "Home":
     st.markdown('<div class="main-container">', unsafe_allow_html=True)
-    st.header('🏠 HR Analytics Dashboard')
+    st.header('HR Analytics Dashboard')
     st.subheader("🔹 Welcome to the HR Analytics Platform!")
     st.write("This platform helps HR professionals analyze attrition trends, predict employee turnover, and gain insights into workplace diversity and inclusion.")
 
@@ -120,41 +120,47 @@ if page == "Home":
     fig = px.line(df, x="time_spend_company", y="left", title="Attrition Rate by Tenure")
     st.plotly_chart(fig, use_container_width=True)
 
-    # Employee Search (HR Lookup)
-    st.subheader("🔎 Employee Search")
-    emp_id = st.text_input("Enter Employee ID:")
-    if emp_id:
-        st.write(f"Employee {emp_id} is currently **Active**")
-
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- AI Chatbot ---
-if page == "HR Chatbot":
+# --- Attrition Prediction (Now Fully Working!) ---
+if page == "Attrition Prediction":
     st.markdown('<div class="main-container">', unsafe_allow_html=True)
-    st.header("🤖 HR Policy Chatbot")
-    st.write("Ask the AI chatbot any HR-related question!")
+    st.header("🔮 Employee Attrition Prediction")
+    st.write("Predict whether an employee is likely to stay or leave based on key HR metrics.")
 
-    user_input = st.text_input("Ask me something about HR policies...")
-    if st.button("Ask Chatbot"):
-        response = f"Great question! HR policy regarding {user_input} is currently being updated."
-        st.write(response)
+    # Input Fields
+    with st.form("predict_employee_attrition"):
+        satisfaction_level = st.slider('Satisfaction Level', 0.0, 1.0, 0.5)
+        last_evaluation = st.slider('Last Evaluation Score', 0.0, 1.0, 0.6)
+        avg_monthly_hours = st.number_input('Average Monthly Hours', min_value=50, max_value=320, step=1, value=160)
+        time_in_company = st.number_input('Years at Company', min_value=1, max_value=20, step=1, value=5)
+        salary_category = st.selectbox("Salary Level", options=["Low", "Medium", "High"])
+        
+        predict_button = st.form_submit_button(label='🔍 Predict')
+
+        if predict_button:
+            # Encode Salary
+            salary_mapping = {"Low": [1, 0], "Medium": [0, 1], "High": [0, 0]}
+            salary_encoded = salary_mapping[salary_category]
+
+            # Create Feature Array
+            input_features = [satisfaction_level, last_evaluation, avg_monthly_hours, time_in_company] + salary_encoded
+
+            # Make Prediction
+            prediction_result = model.predict([input_features])[0]
+            prediction_proba = np.round(model.predict_proba([input_features]) * 100, 2)
+
+            # Display Results
+            st.markdown("***")
+            col1, col2 = st.columns(2)
+
+            if prediction_result == 0:
+                col1.success("✅ Employee is predicted to **STAY**.")
+            else:
+                col1.error("🚨 Employee is predicted to **LEAVE**.")
+
+            col2.metric("Probability to Stay", f"{prediction_proba[0, 0]}%")
+            col2.metric("Probability to Leave", f"{prediction_proba[0, 1]}%")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- Generate Report ---
-if page == "Generate Report":
-    st.markdown('<div class="main-container">', unsafe_allow_html=True)
-    st.header("📄 Generate HR Report")
-    st.write("Download a summary of HR analytics insights.")
-
-    if st.button("Download Report"):
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)
-        pdf.cell(200, 10, txt="HR Analytics Report", ln=True, align="C")
-        pdf.cell(200, 10, txt="Attrition Rate: 23%", ln=True)
-        pdf.cell(200, 10, txt="Top Factor: Lack of Career Growth", ln=True)
-        pdf.output("HR_Analytics_Report.pdf")
-        st.success("Report generated successfully!")
-
-    st.markdown('</div>', unsafe_allow_html=True)

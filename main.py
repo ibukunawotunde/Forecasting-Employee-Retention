@@ -57,7 +57,7 @@ def load_data(file_path):
     # Convert column names to lowercase and remove spaces
     df.columns = df.columns.str.lower().str.replace(" ", "_").str.replace(".", "")
 
-    # Fix Attrition Column Name
+    # Rename 'left' to 'attrition' for consistency
     if "left" in df.columns:
         df.rename(columns={"left": "attrition"}, inplace=True)
 
@@ -70,20 +70,29 @@ df = load_data("HR_comma_sep.csv")
 def train_model(df):
     df = df.copy()
     df["salary"] = df["salary"].map({"low": 0, "medium": 1, "high": 2})
+
+    # Ensure only numeric columns are used
     df = df.select_dtypes(include=[np.number])
     df.fillna(df.mean(), inplace=True)
-    X = df.drop("attrition", axis=1, errors="ignore")
+
+    # Ensure the 'attrition' column is present
+    if "attrition" not in df.columns:
+        st.error("Dataset Error: 'attrition' column is missing. Please check column names.")
+        return None, None, None
+
+    X = df.drop("attrition", axis=1)
     y = df["attrition"].astype(int)
+
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     model = RandomForestClassifier(n_estimators=100, random_state=42)
     model.fit(X_train, y_train)
+    
     return model, X_test, y_test
 
 model, X_test, y_test = train_model(df)
 
 # --- Home Page ---
 if page == "Home":
-    st.markdown('<div class="main-container">', unsafe_allow_html=True)
     st.header('HR & DEI Analytics Dashboard')
     st.subheader("🔹 Welcome to the HR Analytics Platform!")
     st.write("Analyze attrition trends, predict employee turnover, and gain insights into workplace diversity.")
@@ -100,32 +109,26 @@ if page == "Home":
     fig = px.line(df, x="time_spend_company", y="attrition", title="Attrition Rate by Tenure")
     st.plotly_chart(fig, use_container_width=True)
 
-    # Employee Search (HR Lookup)
-    st.subheader("🔎 Employee Search")
-    emp_id = st.text_input("Enter Employee ID:")
-    if emp_id:
-        st.write(f"Employee {emp_id} is currently **Active**")
-
-    st.markdown('</div>', unsafe_allow_html=True)
-
 # --- DEI Metrics Page ---
 if page == "DEI Metrics":
     st.header("🌍 Diversity, Equity, and Inclusion Metrics")
 
-    # Departmental Representation
-    st.subheader("📌 Departmental Representation by Gender")
-    gender_dept = df.groupby(["department", "salary"]).size().unstack()
-    st.bar_chart(gender_dept)
+    # Attrition Rate by Department
+    st.subheader("📌 Attrition Rate by Department")
+    attrition_dept = df.groupby("department")["attrition"].mean().reset_index()
+    fig = px.bar(attrition_dept, x="department", y="attrition", title="Attrition Rate Across Departments")
+    st.plotly_chart(fig)
 
-    # Salary Distribution by Gender
-    st.subheader("📌 Salary Distribution Across Genders")
-    salary_gender = df.groupby(["salary", "department"]).size().unstack()
-    st.bar_chart(salary_gender)
+    # Salary Distribution by Department
+    st.subheader("📌 Salary Distribution Across Departments")
+    fig = px.box(df, x="salary", y="average_montly_hours", color="department",
+                 title="Salary vs. Work Hours by Department")
+    st.plotly_chart(fig)
 
     # Work-Life Balance
     st.subheader("📌 Work-Life Balance Analysis")
-    fig = px.scatter(df, x="average_montly_hours", y="satisfaction_level", color="department",
-                     title="Correlation between Monthly Hours and Satisfaction Level")
+    fig = px.scatter(df, x="average_montly_hours", y="satisfaction_level", color="salary",
+                     title="Work Hours vs. Satisfaction Level")
     st.plotly_chart(fig)
 
 # --- Attrition Prediction Page ---
@@ -157,7 +160,7 @@ if page == "Attrition Prediction":
 
 # --- Salary Analysis Page ---
 if page == "Salary Analysis":
-    st.header("💰 Salary Distribution Across Gender & Departments")
+    st.header("💰 Salary Distribution Across Departments")
     fig = px.box(df, x="salary", y="average_montly_hours", color="department",
                  title="Salary vs. Work Hours by Department")
     st.plotly_chart(fig)
@@ -171,7 +174,7 @@ if page == "Work-Life Balance":
 
 # --- Promotion Trends Page ---
 if page == "Promotion Trends":
-    st.header("📈 Promotion Trends by Gender & Department")
+    st.header("📈 Promotion Trends by Department")
     fig = px.bar(df, x="department", y="promotion_last_5years", color="salary",
                  title="Promotion Rates Across Departments")
     st.plotly_chart(fig)

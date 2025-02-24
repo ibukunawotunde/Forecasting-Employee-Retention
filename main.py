@@ -13,7 +13,7 @@ from sklearn.metrics import accuracy_score, classification_report
 
 # Set page configuration
 st.set_page_config(
-    page_title="HR Analytics - Employee Attrition Prediction",
+    page_title="HR & DEI Analytics - Employee Attrition Prediction",
     page_icon="📊",
     layout="wide"
 )
@@ -46,12 +46,12 @@ def train_model(df):
 model, X_test, y_test = train_model(df)
 
 # Sidebar Navigation
-st.sidebar.title("HR Analytics Dashboard")
-page = st.sidebar.radio("Go to", ["Home", "Attrition Prediction", "What-If Analysis", "Feature Importance", "HR Chatbot", "Generate Report"])
+st.sidebar.title("HR & DEI Analytics Dashboard")
+page = st.sidebar.radio("Go to", ["Home", "Attrition Prediction", "What-If Analysis", "Feature Importance", "DEI Metrics", "HR Chatbot", "Generate Report"])
 
 if page == "Home":
-    st.title("📊 HR Analytics - Employee Attrition Prediction")
-    st.write("This application helps HR teams analyze and predict employee attrition using data-driven insights.")
+    st.title("📊 HR & DEI Analytics - Employee Attrition Prediction")
+    st.write("This application helps HR teams analyze and predict employee attrition using data-driven insights while incorporating DEI metrics.")
     st.subheader("📌 Key Insights:")
     fig = px.bar(df, x="Department", y="left", color="left", barmode="group", title="Attrition by Department")
     st.plotly_chart(fig)
@@ -94,11 +94,23 @@ elif page == "Feature Importance":
     shap.summary_plot(shap_values, X_test, show=False)
     st.pyplot(fig)
 
+elif page == "DEI Metrics":
+    st.title("🌍 Diversity, Equity, and Inclusion Metrics")
+    st.write("Analyze workforce diversity across different demographic factors.")
+    fig = px.bar(df, x="salary", y="left", color="left", barmode="group", title="Attrition by Salary Level")
+    st.plotly_chart(fig)
+
+    gender_distribution = px.pie(df, names="gender", title="Gender Representation in Workforce")
+    st.plotly_chart(gender_distribution)
+
+    ethnicity_distribution = px.pie(df, names="ethnicity", title="Ethnic Diversity in Workforce")
+    st.plotly_chart(ethnicity_distribution)
+
 elif page == "HR Chatbot":
     st.title("💬 AI-Powered HR Chatbot")
-    user_input = st.text_input("Ask me about employee attrition:")
+    user_input = st.text_input("Ask me about employee attrition or DEI insights:")
     if user_input:
-        response = "Attrition is mainly influenced by job satisfaction, salary, and work-life balance. Data insights can help address these issues proactively."
+        response = "Attrition and DEI are closely linked. Employees from underrepresented backgrounds may face unique challenges. Data insights can help address these gaps proactively."
         st.write("🤖 HR Chatbot:", response)
 
 elif page == "Generate Report":
@@ -107,7 +119,7 @@ elif page == "Generate Report":
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", size=12)
-        pdf.cell(200, 10, txt="HR Attrition Report", ln=True, align='C')
+        pdf.cell(200, 10, txt="HR & DEI Attrition Report", ln=True, align='C')
         pdf.output("attrition_report.pdf")
         st.success("✅ Report Generated! Download from below.")
         st.download_button("📥 Download Report", "attrition_report.pdf")

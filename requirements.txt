@@ -6,7 +6,8 @@ numpy==1.26.4
 pandas
 plotly
 statsmodels==0.14.0
-shap  # Add SHAP for feature importance
-matplotlib  # Required for SHAP plots
+shap  # SHAP for feature importance visualization
+matplotlib  # Required for SHAP and other plots
+seaborn  # Fix missing module issue for better visualizations
 fpdf  # Needed for generating PDF reports
 openai  # Required if you use the AI chatbot

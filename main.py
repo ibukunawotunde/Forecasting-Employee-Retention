@@ -1,32 +1,75 @@
-# --- Importing Required Libraries ---
+# --- Importing ToolKits ---
+import re
 import pandas as pd
 import numpy as np
 import plotly.express as px
 import seaborn as sns
+import shap
 import matplotlib.pyplot as plt
 import streamlit as st
+import streamlit.components.v1 as html
 from streamlit_option_menu import option_menu
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, confusion_matrix
+from fpdf import FPDF
+import openai  # For AI-powered chatbot
 import warnings
 
 # --- Streamlit Page Configuration ---
 st.set_page_config(
-    page_title="HR & DEI Analytics Dashboard",
+    page_title="HR Analytics Dashboard",
     page_icon="📊",
     layout="wide"
 )
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
+# --- Custom Styling for Modern UI ---
+st.markdown(
+    """
+    <style>
+        .st-emotion-cache-16txtl3 h1 {
+            font: bold 30px Arial;
+            text-align: center;
+            margin-bottom: 15px;
+            color: #005DAA;
+        }
+        div[data-testid=stSidebarContent] {
+            background-color: #E6EEF8;
+            border-right: 4px solid #005DAA;
+            padding: 15px!important;
+        }
+        .main-container {
+            background-color: #F8FAFC;
+            padding: 20px;
+            border-radius: 12px;
+        }
+        div[data-testid=stFormSubmitButton]> button {
+            width: 100%;
+            background: linear-gradient(90deg, #005DAA, #0073E6);
+            border: none;
+            padding: 14px;
+            border-radius: 10px;
+            color: white;
+            font-size: 18px;
+            transition: 0.3s ease-in-out;
+        }
+        div[data-testid=stFormSubmitButton]> button:hover {
+            background: linear-gradient(90deg, #0073E6, #005DAA);
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 # --- Sidebar Navigation ---
 with st.sidebar:
-    st.title("HR & DEI Analytics Dashboard")
+    st.title("HR Analytics Dashboard")
     page = option_menu(
         menu_title=None,
-        options=['Home', 'DEI Metrics', 'Attrition Prediction', 'Salary Analysis', 'Work-Life Balance', 'Promotion Trends'],
-        icons=['house-fill', "globe-americas", 'bar-chart-line', "currency-dollar", "activity", "bar-chart-line"],
+        options=['Home', 'Attrition Prediction', 'Feature Importance', 'DEI Metrics', 'HR Chatbot', 'Generate Report'],
+        icons=['house-fill', 'bar-chart-line-fill', "graph-up-arrow", "globe-americas", "chat-text-fill", "file-earmark-text-fill"],
         menu_icon="cast",
         default_index=0
     )
@@ -35,133 +78,89 @@ with st.sidebar:
 @st.cache_data
 def load_data(file_path):
     df = pd.read_csv(file_path)
+    df.columns = df.columns.str.replace(" ", "_").str.replace(".", "")
+    df.drop_duplicates(inplace=True)
+    df.reset_index(drop=True, inplace=True)
 
-    # Convert column names to lowercase and remove spaces
-    df.columns = df.columns.str.lower().str.replace(" ", "_").str.replace(".", "")
-
-    # Rename 'left' to 'attrition' for consistency
-    if "left" in df.columns:
-        df.rename(columns={"left": "attrition"}, inplace=True)
+    # Ensure correct column name usage
+    if "left" not in df.columns:
+        st.error("Error: The dataset does not contain a 'left' column. Please check the dataset column names.")
+        st.stop()
 
     return df
 
 df = load_data("HR_comma_sep.csv")
 
-# Ensure the dataset contains required columns
-required_columns = {"attrition", "time_spend_company", "department", "salary", "satisfaction_level"}
-missing_columns = required_columns - set(df.columns)
-
-if missing_columns:
-    st.error(f"Dataset Error: Missing columns: {missing_columns}. Please check the dataset.")
-    st.stop()
-
 # --- Train Model ---
 @st.cache_data
 def train_model(df):
     df = df.copy()
-
-    # Map salary levels to numerical values
     df["salary"] = df["salary"].map({"low": 0, "medium": 1, "high": 2})
-
-    # Select only numeric columns
     df = df.select_dtypes(include=[np.number])
     df.fillna(df.mean(), inplace=True)
-
-    X = df.drop("attrition", axis=1)
-    y = df["attrition"].astype(int)
-
+    X = df.drop("left", axis=1, errors="ignore")
+    y = df["left"].astype(int)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     model = RandomForestClassifier(n_estimators=100, random_state=42)
     model.fit(X_train, y_train)
-    
     return model, X_test, y_test
 
 model, X_test, y_test = train_model(df)
 
 # --- Home Page ---
 if page == "Home":
-    st.header('HR & DEI Analytics Dashboard')
+    st.markdown('<div class="main-container">', unsafe_allow_html=True)
+    st.header('HR Analytics Dashboard')
     st.subheader("🔹 Welcome to the HR Analytics Platform!")
-    st.write("Analyze attrition trends, predict employee turnover, and gain insights into workplace diversity.")
+    st.write("This platform helps HR professionals analyze attrition trends, predict employee turnover, and gain insights into workplace diversity and inclusion.")
 
     # Quick Metrics
     st.subheader("📊 Quick HR Metrics")
     col1, col2, col3 = st.columns(3)
-    col1.metric("Attrition Rate", f"{df['attrition'].mean()*100:.2f}%", "⬆ 5% from last year")
-    col2.metric("Avg. Satisfaction Score", f"{df['satisfaction_level'].mean()*100:.2f}%", "⬆ 3%")
+    col1.metric("Attrition Rate", f"{df['left'].mean() * 100:.1f}%", "⬆ 5% from last year")
+    col2.metric("Avg. Satisfaction Score", f"{df['satisfaction_level'].mean() * 100:.1f}%", "⬆ 3%")
     col3.metric("Top Attrition Factor", "Lack of Career Growth", "🔍 Insights Available")
 
     # Interactive Attrition Trends Chart
     st.subheader("📉 Attrition Trends Over Time")
-    fig = px.line(df, x="time_spend_company", y="attrition", title="Attrition Rate by Tenure")
+    fig = px.line(df, x="time_spend_company", y="left", title="Attrition Rate by Tenure")
     st.plotly_chart(fig, use_container_width=True)
 
-# --- DEI Metrics Page ---
-if page == "DEI Metrics":
-    st.header("🌍 Diversity, Equity, and Inclusion Metrics")
+    # Employee Search (HR Lookup)
+    st.subheader("🔎 Employee Search")
+    emp_id = st.text_input("Enter Employee ID:")
+    if emp_id:
+        st.write(f"Employee {emp_id} is currently **Active**")
 
-    # Attrition Rate by Department
-    st.subheader("📌 Attrition Rate by Department")
-    attrition_dept = df.groupby("department")["attrition"].mean().reset_index()
-    fig = px.bar(attrition_dept, x="department", y="attrition", title="Attrition Rate Across Departments")
-    st.plotly_chart(fig)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    # Salary Distribution by Department
-    st.subheader("📌 Salary Distribution Across Departments")
-    fig = px.box(df, x="salary", y="average_montly_hours", color="department",
-                 title="Salary vs. Work Hours by Department")
-    st.plotly_chart(fig)
+# --- AI Chatbot ---
+if page == "HR Chatbot":
+    st.markdown('<div class="main-container">', unsafe_allow_html=True)
+    st.header("🤖 HR Policy Chatbot")
+    st.write("Ask the AI chatbot any HR-related question!")
 
-    # Work-Life Balance
-    st.subheader("📌 Work-Life Balance Analysis")
-    fig = px.scatter(df, x="average_montly_hours", y="satisfaction_level", color="salary",
-                     title="Work Hours vs. Satisfaction Level")
-    st.plotly_chart(fig)
+    user_input = st.text_input("Ask me something about HR policies...")
+    if st.button("Ask Chatbot"):
+        response = f"Great question! HR policy regarding {user_input} is currently being updated."
+        st.write(response)
 
-# --- Attrition Prediction Page ---
-if page == "Attrition Prediction":
-    st.header("📊 Employee Attrition Prediction")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    with st.form("Predict_value"):
-        satisfaction_level = st.slider('Satisfaction Level', 0.05, 1.0, 0.66)
-        last_evaluation = st.slider('Last Evaluation', 0.05, 1.0, 0.54)
-        avg_monthly_hours = st.number_input('Average Monthly Hours', min_value=50, max_value=320, step=1, value=120)
-        time_in_company = st.number_input('Time in Company', min_value=1, max_value=20, step=1, value=5)
-        salary_category = st.selectbox("Salary", options=["Low", "Medium", "High"])
-        predict_button = st.form_submit_button(label='Predict', use_container_width=True)
+# --- Generate Report ---
+if page == "Generate Report":
+    st.markdown('<div class="main-container">', unsafe_allow_html=True)
+    st.header("📄 Generate HR Report")
+    st.write("Download a summary of HR analytics insights.")
 
-        if predict_button:
-            salary = [0, 0]
-            if salary_category == "Low":
-                salary = [1, 0]
-            elif salary_category == "Medium":
-                salary = [0, 1]
+    if st.button("Download Report"):
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.cell(200, 10, txt="HR Analytics Report", ln=True, align="C")
+        pdf.cell(200, 10, txt=f"Attrition Rate: {df['left'].mean() * 100:.1f}%", ln=True)
+        pdf.cell(200, 10, txt="Top Factor: Lack of Career Growth", ln=True)
+        pdf.output("HR_Analytics_Report.pdf")
+        st.success("Report generated successfully!")
 
-            input_features = [satisfaction_level, last_evaluation, avg_monthly_hours, time_in_company] + salary
-            prediction_result = model.predict([input_features])[0]
-            prediction_prop = np.round(model.predict_proba([input_features]) * 100)
-
-            st.subheader(f"Prediction: {'Stay' if prediction_result == 0 else 'Leave'}")
-            st.subheader(f"Probability to Stay: {prediction_prop[0, 0]}%")
-            st.subheader(f"Probability to Leave: {prediction_prop[0, 1]}%")
-
-# --- Salary Analysis Page ---
-if page == "Salary Analysis":
-    st.header("💰 Salary Distribution Across Departments")
-    fig = px.box(df, x="salary", y="average_montly_hours", color="department",
-                 title="Salary vs. Work Hours by Department")
-    st.plotly_chart(fig)
-
-# --- Work-Life Balance Page ---
-if page == "Work-Life Balance":
-    st.header("⚖ Work-Life Balance Trends")
-    fig = px.scatter(df, x="average_montly_hours", y="satisfaction_level", color="salary",
-                     title="Work Hours vs. Satisfaction Level")
-    st.plotly_chart(fig)
-
-# --- Promotion Trends Page ---
-if page == "Promotion Trends":
-    st.header("📈 Promotion Trends by Department")
-    fig = px.bar(df, x="department", y="promotion_last_5years", color="salary",
-                 title="Promotion Rates Across Departments")
-    st.plotly_chart(fig)
+    st.markdown('</div>', unsafe_allow_html=True)

@@ -13,7 +13,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, confusion_matrix
 from fpdf import FPDF
-import openai  # For AI-powered chatbot
+import openai
 import warnings
 
 # --- Streamlit Page Configuration ---
@@ -24,44 +24,6 @@ st.set_page_config(
 )
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
-
-# --- Custom Styling for Modern UI ---
-st.markdown(
-    """
-    <style>
-        .st-emotion-cache-16txtl3 h1 {
-            font: bold 30px Arial;
-            text-align: center;
-            margin-bottom: 15px;
-            color: #005DAA;
-        }
-        div[data-testid=stSidebarContent] {
-            background-color: #E6EEF8;
-            border-right: 4px solid #005DAA;
-            padding: 15px!important;
-        }
-        .main-container {
-            background-color: #F8FAFC;
-            padding: 20px;
-            border-radius: 12px;
-        }
-        div[data-testid=stFormSubmitButton]> button {
-            width: 100%;
-            background: linear-gradient(90deg, #005DAA, #0073E6);
-            border: none;
-            padding: 14px;
-            border-radius: 10px;
-            color: white;
-            font-size: 18px;
-            transition: 0.3s ease-in-out;
-        }
-        div[data-testid=stFormSubmitButton]> button:hover {
-            background: linear-gradient(90deg, #0073E6, #005DAA);
-        }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
 
 # --- Sidebar Navigation ---
 with st.sidebar:
@@ -78,29 +40,33 @@ with st.sidebar:
 @st.cache_data
 def load_data(file_path):
     df = pd.read_csv(file_path)
-    
-    # 🔹 Normalize column names to lowercase for consistency
-    df.columns = df.columns.str.replace(" ", "_").str.replace(".", "").str.lower()
-    
+
+    # 🔹 Normalize column names (lowercase, remove spaces)
+    df.columns = df.columns.str.lower().str.replace(" ", "_").str.replace(".", "")
+
+    # 🔹 Rename 'attrition' properly to match dataset
+    if "attrition" not in df.columns and "attrition".capitalize() in df.columns:
+        df.rename(columns={"Attrition": "attrition"}, inplace=True)
+
     df.drop_duplicates(inplace=True)
     df.reset_index(drop=True, inplace=True)
     return df
 
 df = load_data("HR_comma_sep.csv")
 
-# 🔍 **Check if 'attrition' Column Exists**
+# --- Check for Attrition Column ---
 if "attrition" not in df.columns:
-    st.error("Error: The dataset does not contain an 'attrition' column. Please check the dataset column names.")
-    st.write("Available columns in dataset:", df.columns.tolist())
+    st.error("🚨 Error: The dataset does not contain an 'attrition' column. Please check the dataset column names.")
+    st.write("📌 **Available Columns in the dataset:**", df.columns.tolist())
 
 # --- Train Model ---
 @st.cache_data
 def train_model(df):
     df = df.copy()
     
-    # 🔹 Check if "attrition" column exists
+    # Ensure 'attrition' column exists before proceeding
     if "attrition" not in df.columns:
-        raise KeyError("The dataset does not contain an 'attrition' column.")
+        raise KeyError("🚨 The dataset does not contain an 'attrition' column.")
 
     df["salary"] = df["salary"].map({"low": 0, "medium": 1, "high": 2})
     df = df.select_dtypes(include=[np.number])
@@ -115,46 +81,37 @@ def train_model(df):
 try:
     model, X_test, y_test = train_model(df)
 except KeyError as e:
-    st.error(f"Dataset Error: {e}")
+    st.error(f"🚨 Dataset Error: {e}")
 
 # --- Home Page ---
 if page == "Home":
-    st.markdown('<div class="main-container">', unsafe_allow_html=True)
     st.header('HR Analytics Dashboard')
-    st.subheader("🔹 Welcome to the HR Analytics Platform!")
-    st.write("This platform helps HR professionals analyze attrition trends, predict employee turnover, and gain insights into workplace diversity and inclusion.")
+    st.write("📌 Welcome! This dashboard helps HR teams analyze attrition trends, predict employee turnover, and gain DEI insights.")
 
     # Quick Metrics
-    st.subheader("📊 Quick HR Metrics")
     col1, col2, col3 = st.columns(3)
     col1.metric("Attrition Rate", "23%", "⬆ 5% from last year")
     col2.metric("Avg. Satisfaction Score", "72%", "⬆ 3%")
     col3.metric("Top Attrition Factor", "Lack of Career Growth", "🔍 Insights Available")
 
-    # Interactive Attrition Trends Chart
+    # Attrition Trends Chart
     st.subheader("📉 Attrition Trends Over Time")
     fig = px.line(df, x="years_at_company", y="attrition", title="Attrition Rate by Tenure")
     st.plotly_chart(fig, use_container_width=True)
 
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# --- DEI Metrics Dashboard ---
+# --- DEI Metrics ---
 if page == "DEI Metrics":
-    st.markdown('<div class="main-container">', unsafe_allow_html=True)
     st.header("🌍 Diversity, Equity & Inclusion (DEI) Metrics")
-    st.write("Analyze attrition rates by gender, department, job role, salary level, and work-life balance to identify disparities.")
+    st.write("Analyze attrition trends by gender, department, salary, and job satisfaction.")
 
-    # Ensure required columns exist
-    required_columns = ["attrition", "gender", "department", "marital_status", "daily_rate"]
-    
+    required_columns = ["attrition", "gender", "department", "salary"]
     missing_cols = [col for col in required_columns if col not in df.columns]
 
     if missing_cols:
-        st.error(f"Missing Columns: {', '.join(missing_cols)}. Please ensure DEI data is available.")
+        st.error(f"🚨 Missing Columns: {', '.join(missing_cols)}. Ensure the dataset includes required DEI fields.")
     else:
         df["gender"] = df["gender"].map({1: "Female", 2: "Male"})
         df["department"] = df["department"].map({1: "HR", 2: "R&D", 3: "Sales"})
-        df["marital_status"] = df["marital_status"].map({1: "Divorced", 2: "Married", 3: "Single"})
 
         # Attrition by Gender
         st.subheader("📊 Attrition Rate by Gender")
@@ -170,8 +127,6 @@ if page == "DEI Metrics":
 
         # Attrition by Salary
         st.subheader("💰 Attrition by Salary Level")
-        fig3 = px.box(df, x="attrition", y="daily_rate", color="attrition",
+        fig3 = px.box(df, x="attrition", y="salary", color="attrition",
                       title="Salary Distribution Among Employees Who Left vs Stayed")
         st.plotly_chart(fig3, use_container_width=True)
-
-    st.markdown('</div>', unsafe_allow_html=True)

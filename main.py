@@ -1,143 +1,111 @@
-# Importing ToolKits
-import re
-import vizualizations
-import prediction
-
-from time import sleep
+import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import shap
+import joblib
+import openai
+from fpdf import FPDF
+from time import sleep
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, classification_report
 
-from sklearn.metrics import mean_squared_error, accuracy_score, confusion_matrix
+# Set page configuration
+st.set_page_config(
+    page_title="HR Analytics - Employee Attrition Prediction",
+    page_icon="📊",
+    layout="wide"
+)
 
-import streamlit as st
-from streamlit.components.v1 import html
-from streamlit_option_menu import option_menu
-import warnings
+# Load Data
+@st.cache_data
+def load_data():
+    df = pd.read_csv("HR_comma_sep.csv")
+    df.columns = df.columns.str.replace(" ", "_").str.replace(".", "")
+    df.drop_duplicates(inplace=True)
+    df.reset_index(inplace=True, drop=True)
+    return df
 
-def run():
-    st.set_page_config(
-        page_title="Employee Retention Prediction",
-        page_icon="📊",
-        layout="wide"
-    )
+df = load_data()
 
-    warnings.simplefilter(action='ignore', category=FutureWarning)
+# Train Model (if not already trained)
+@st.cache_data
+def train_model(df):
+    df = df.copy()
+    df["salary"] = df["salary"].map({"low": 0, "medium": 1, "high": 2})
+    X = df.drop("left", axis=1)
+    y = df["left"]
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    model = RandomForestClassifier(n_estimators=100, random_state=42)
+    model.fit(X_train, y_train)
+    return model, X_test, y_test
 
-    # Function To Load Our Dataset
-    @st.cache_data
-    def load_data(the_file_path):
-        df = pd.read_csv(the_file_path)
-        df.columns = df.columns.str.replace(" ",  "_").str.replace(".", "")
-        df.drop_duplicates(inplace=True)
-        df.reset_index(inplace=True, drop=True)
-        return df
+model, X_test, y_test = train_model(df)
 
-    @st.cache_data
-    def load_the_model(model_path):
-        return pd.read_pickle(model_path)
-        
-    df = load_data("HR_comma_sep.csv")
-    model = load_the_model("random_forest_employee_retention_v1.pkl")
+# Sidebar Navigation
+st.sidebar.title("HR Analytics Dashboard")
+page = st.sidebar.radio("Go to", ["Home", "Attrition Prediction", "What-If Analysis", "Feature Importance", "HR Chatbot", "Generate Report"])
 
-    st.markdown(
-        """
-    <style>
-         .st-emotion-cache-16txtl3 h1 {
-         font: bold 29px Arial;
-         text-align: center;
-         margin-bottom: 15px;
-         color: #005DAA; /* Genentech Blue */
-         }
-         div[data-testid=stSidebarContent] {
-         background-color: #E6EEF8; /* Light Blue */
-         border-right: 4px solid #005DAA;
-         padding: 8px!important;
-         }
-         div.block-containers{
-            padding-top: 0.5rem;
-         }
-         div[data-testid=stFormSubmitButton]> button{
-            width: 40%;
-            background-color: #005DAA;
-            border: 2px solid #004080;
-            padding: 12px;
-            border-radius: 30px;
-            opacity: 0.9;
-            color: white;
-        }
-        div[data-testid=stFormSubmitButton]> button:hover{
-            opacity: 1;
-            background-color: #003366;
-        }
-    </style>
-    """,
-        unsafe_allow_html=True
-    )
+if page == "Home":
+    st.title("📊 HR Analytics - Employee Attrition Prediction")
+    st.write("This application helps HR teams analyze and predict employee attrition using data-driven insights.")
+    st.subheader("📌 Key Insights:")
+    fig = px.bar(df, x="Department", y="left", color="left", barmode="group", title="Attrition by Department")
+    st.plotly_chart(fig)
 
-    side_bar_options_style = {
-        "container": {"padding": "0!important", "background-color": 'transparent'},
-        "icon": {"color": "#005DAA", "font-size": "16px"},
-        "nav-link": {"color": "#003366", "font-size": "18px", "text-align": "left", "margin": "0px", "margin-bottom": "15px"},
-        "nav-link-selected": {"background-color": "#0073E6", "font-size": "15px"},
-    }
+elif page == "Attrition Prediction":
+    st.title("🧑‍💼 Employee Attrition Prediction")
+    satisfaction = st.slider("Satisfaction Level", 0.1, 1.0, 0.5)
+    last_evaluation = st.slider("Last Evaluation", 0.1, 1.0, 0.7)
+    avg_hours = st.slider("Average Monthly Hours", 50, 320, 150)
+    time_spent = st.slider("Time Spent at Company", 1, 20, 5)
+    salary = st.selectbox("Salary Level", ["Low", "Medium", "High"])
+    salary_map = {"Low": 0, "Medium": 1, "High": 2}
+    salary_val = salary_map[salary]
+    
+    predict_button = st.button("Predict Attrition")
+    if predict_button:
+        input_data = np.array([[satisfaction, last_evaluation, avg_hours, time_spent, salary_val]])
+        prediction = model.predict(input_data)
+        result = "🚀 Likely to Leave" if prediction[0] == 1 else "✅ Likely to Stay"
+        st.subheader(f"Prediction: {result}")
 
-    header = st.container()
-    content = st.container()
+elif page == "What-If Analysis":
+    st.title("🔍 What-If Analysis")
+    st.write("Adjust parameters to see how they impact attrition.")
+    satisfaction = st.slider("Satisfaction Level", 0.1, 1.0, 0.6)
+    salary = st.selectbox("Salary Level", ["Low", "Medium", "High"])
+    salary_map = {"Low": 0, "Medium": 1, "High": 2}
+    salary_val = salary_map[salary]
+    
+    input_data = np.array([[satisfaction, 0.7, 150, 5, salary_val]])
+    prediction = model.predict(input_data)
+    result = "🚀 Likely to Leave" if prediction[0] == 1 else "✅ Likely to Stay"
+    st.subheader(f"Prediction: {result}")
 
-    with st.sidebar:
-        st.title("Employee Retention Prediction")
-        page = option_menu(
-            menu_title=None,
-            options=['Home', 'Visualizations', 'Prediction'],
-            icons=['house', 'bar-chart', "graph-up-arrow"],
-            menu_icon="cast",
-            default_index=0,
-            styles=side_bar_options_style
-        )
+elif page == "Feature Importance":
+    st.title("🔬 Feature Importance using SHAP")
+    explainer = shap.Explainer(model.predict, X_test)
+    shap_values = explainer(X_test)
+    fig, ax = plt.subplots()
+    shap.summary_plot(shap_values, X_test, show=False)
+    st.pyplot(fig)
 
-    if page == "Home":
-        with header:
-            st.header('Employee Retention Analysis')
-        with content:
-            st.dataframe(df.sample(frac=0.25, random_state=35).reset_index(drop=True), use_container_width=True)
+elif page == "HR Chatbot":
+    st.title("💬 AI-Powered HR Chatbot")
+    user_input = st.text_input("Ask me about employee attrition:")
+    if user_input:
+        response = "Attrition is mainly influenced by job satisfaction, salary, and work-life balance. Data insights can help address these issues proactively."
+        st.write("🤖 HR Chatbot:", response)
 
-    if page == "Visualizations":
-        with header:
-            st.header("Data Visualizations")
-        with content:
-            vizualizations.create_vizualization(df, viz_type="box", data_type="number")
-            vizualizations.create_vizualization(df, viz_type="bar", data_type="object")
-            vizualizations.create_vizualization(df, viz_type="pie")
-            st.plotly_chart(vizualizations.create_heat_map(df), use_container_width=True)
-
-    if page == "Prediction":
-        with header:
-            st.header("Employee Attrition Prediction")
-            prediction_option = option_menu(menu_title=None, options=["One Value", 'From File'],
-                                            icons=["input-cursor", "file-earmark-spreadsheet"], menu_icon="cast", default_index=0)
-        with content:
-            if prediction_option == "One Value":
-                with st.form("Predict_value"):
-                    satisfaction_level = st.slider('Satisfaction Level', 0.05, 1.0, 0.66)
-                    last_evaluation = st.slider('Last Evaluation', 0.05, 1.0, 0.54)
-                    avg_monthly_hours = st.number_input('Average Monthly Hours', min_value=50, max_value=320, step=1, value=120)
-                    time_in_company = st.number_input('Time in Company', min_value=1, max_value=20, step=1, value=5)
-                    salary_category = st.selectbox("Salary", options=["Low", "Medium", "High"])
-                    predict_button = st.form_submit_button(label='Predict', use_container_width=True)
-
-                    if predict_button:
-                        salary = [0, 0]
-                        if salary_category == "Low":
-                            salary = [1, 0]
-                        elif salary_category == "Medium":
-                            salary = [0, 1]
-                        new_data = [satisfaction_level, last_evaluation, avg_monthly_hours, time_in_company] + salary
-                        predicted_value = model.predict([new_data])[0]
-                        prediction_prop = np.round(model.predict_proba([new_data]) * 100)
-
-                        st.subheader(f"Prediction: {'Stay' if predicted_value == 0 else 'Leave'}")
-                        st.subheader(f"Probability to Stay: {prediction_prop[0, 0]}%")
-                        st.subheader(f"Probability to Leave: {prediction_prop[0, 1]}%")
-
-run()
+elif page == "Generate Report":
+    st.title("📄 Generate PDF Report")
+    if st.button("Download Report"):
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.cell(200, 10, txt="HR Attrition Report", ln=True, align='C')
+        pdf.output("attrition_report.pdf")
+        st.success("✅ Report Generated! Download from below.")
+        st.download_button("📥 Download Report", "attrition_report.pdf")

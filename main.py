@@ -89,14 +89,20 @@ df = load_data("HR_comma_sep.csv")
 @st.cache_data
 def train_model(df):
     df = df.copy()
-    df["salary"] = df["salary"].map({"low": 0, "medium": 1, "high": 2})
+    df["Salary"] = df["Salary"].map({"low": 0, "medium": 1, "high": 2})
+    
+    # Selecting numeric data only
     df = df.select_dtypes(include=[np.number])
     df.fillna(df.mean(), inplace=True)
+
     X = df.drop("left", axis=1, errors="ignore")
     y = df["left"].astype(int)
+
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
     model = RandomForestClassifier(n_estimators=100, random_state=42)
     model.fit(X_train, y_train)
+
     return model, X_test, y_test
 
 model, X_test, y_test = train_model(df)
@@ -127,7 +133,7 @@ if page == "Attrition Prediction":
     st.markdown('<div class="main-container">', unsafe_allow_html=True)
     st.header("🔍 Predict Employee Attrition")
 
-    # User Input Form
+    # Form for user input
     with st.form("Prediction_Form"):
         satisfaction_level = st.slider('Satisfaction Level', 0.0, 1.0, 0.5)
         last_evaluation = st.slider('Last Evaluation Score', 0.0, 1.0, 0.6)
@@ -136,15 +142,16 @@ if page == "Attrition Prediction":
         time_spend_company = st.slider("Years at Company", 1, 20, 5)
         work_accident = st.selectbox("Work Accident", [0, 1])
         promotion_last_5years = st.selectbox("Promotion in Last 5 Years", [0, 1])
-        department = st.selectbox("Department", df["department"].unique())
-        salary = st.selectbox("Salary Level", df["salary"].unique())
+        department = st.selectbox("Department", df["Department"].unique())
+        salary = st.selectbox("Salary Level", df["Salary"].unique())
 
+        # Submit button
         predict_button = st.form_submit_button("Predict Attrition")
 
     if predict_button:
         # Encoding Categorical Variables
-        department_encoded = [1 if department == dept else 0 for dept in df["department"].unique()]
-        salary_encoded = [1 if salary == sal else 0 for sal in df["salary"].unique()]
+        department_encoded = [1 if department == dept else 0 for dept in df["Department"].unique()]
+        salary_encoded = [1 if salary == sal else 0 for sal in df["Salary"].unique()]
 
         # Constructing Feature Input
         input_features = [
@@ -154,13 +161,16 @@ if page == "Attrition Prediction":
         ] + department_encoded + salary_encoded
 
         # Make Prediction
-        prediction_result = model.predict([input_features])[0]
-        prediction_prob = model.predict_proba([input_features])[0]
+        try:
+            prediction_result = model.predict([input_features])[0]
+            prediction_prob = model.predict_proba([input_features])[0]
 
-        # Display Result
-        if prediction_result == 1:
-            st.error(f"⚠️ High Risk: Employee is likely to leave! (Probability: {prediction_prob[1]*100:.2f}%)")
-        else:
-            st.success(f"✅ Low Risk: Employee is likely to stay. (Probability: {prediction_prob[0]*100:.2f}%)")
+            # Display Result
+            if prediction_result == 1:
+                st.error(f"⚠️ High Risk: Employee is likely to leave! (Probability: {prediction_prob[1]*100:.2f}%)")
+            else:
+                st.success(f"✅ Low Risk: Employee is likely to stay. (Probability: {prediction_prob[0]*100:.2f}%)")
+        except Exception as e:
+            st.error(f"Prediction Error: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)

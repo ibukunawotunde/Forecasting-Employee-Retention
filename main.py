@@ -3,46 +3,90 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import seaborn as sns
+import shap
+import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, confusion_matrix
-import shap
-import matplotlib.pyplot as plt
-import seaborn as sns
 from streamlit_option_menu import option_menu
 
 # --- Page Configuration ---
 st.set_page_config(
-    page_title="HR & DEI Analytics",
+    page_title="HR Analytics Dashboard",
     page_icon="📊",
     layout="wide"
 )
 
-# --- Sidebar Styling ---
-side_bar_options_style = {
-    "container": {"padding": "0!important", "background-color": 'transparent'},
-    "icon": {"color": "white", "font-size": "18px"},
-    "nav-link": {"color": "#fff", "font-size": "20px", "text-align": "left", "margin": "5px"},
-    "nav-link-selected": {"background-color": "#17B794", "font-size": "20px"},
-}
+# --- Custom CSS Styling for a Modern Look ---
+st.markdown(
+    """
+    <style>
+        /* Background Gradient */
+        .stApp {
+            background: linear-gradient(to right, #0072C6, #004A8F);
+            color: white;
+        }
 
-# --- Sidebar Navigation ---
+        /* Sidebar Customization */
+        div[data-testid="stSidebar"] {
+            background-color: #1E1E1E;
+            padding: 20px;
+        }
+        div[data-testid="stSidebarContent"] {
+            color: white;
+            font-size: 18px;
+        }
+
+        /* Sidebar Menu Text Styling */
+        .css-1v0mbdj p, .css-1v0mbdj a {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        /* Centered Titles */
+        .st-emotion-cache-1h1ov1w h1 {
+            text-align: center;
+            font-size: 30px;
+            font-weight: bold;
+        }
+
+        /* Buttons & Forms */
+        div[data-testid="stFormSubmitButton"] > button {
+            width: 100%;
+            background-color: #0072C6;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+        }
+        div[data-testid="stFormSubmitButton"] > button:hover {
+            background-color: #004A8F;
+        }
+
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# --- Sidebar Menu (Updated without Missing Logo) ---
 with st.sidebar:
-    st.title(":blue[HR & DEI Analytics Dashboard]")
+    st.title(":blue[HR Analytics Dashboard]")
 
-    # Ensure image exists, else replace with a valid one
-    try:
-        st.image("imgs/dashboard_logo.png", caption="", width=120)
-    except:
-        st.image("https://via.placeholder.com/150", caption="Logo Missing", width=120)
-
+    # Sidebar Navigation Menu
     page = option_menu(
         menu_title=None,
         options=['Home', 'Attrition Prediction', 'Feature Importance', 'DEI Metrics', 'HR Chatbot', 'Generate Report'],
         icons=['house-fill', 'bar-chart-line-fill', "graph-up-arrow", "globe-americas", "chat-text-fill", "file-earmark-text-fill"],
         menu_icon="cast",
         default_index=0,
-        styles=side_bar_options_style
+        styles={
+            "container": {"padding": "0!important", "background-color": "transparent"},
+            "icon": {"color": "white", "font-size": "18px"},
+            "nav-link": {"color": "white", "font-size": "20px", "text-align": "left", "margin": "5px"},
+            "nav-link-selected": {"background-color": "#17B794", "font-size": "20px"},
+        }
     )
 
 # --- Load Data ---
@@ -54,46 +98,31 @@ def load_data(file_path):
     df.reset_index(drop=True, inplace=True)
     return df
 
-# Load dataset
 df = load_data("HR_comma_sep.csv")
 
 # --- Train Model ---
 @st.cache_data
 def train_model(df):
     df = df.copy()
-
-    # Encode categorical variables
     df["salary"] = df["salary"].map({"low": 0, "medium": 1, "high": 2})
-
-    # Drop non-numeric columns
     df = df.select_dtypes(include=[np.number])
-
-    # Handle missing values
     df.fillna(df.mean(), inplace=True)
-
-    # Define Features & Target
     X = df.drop("left", axis=1, errors="ignore")
     y = df["left"].astype(int)
-
-    # Train/Test Split
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-    # Train Model
     model = RandomForestClassifier(n_estimators=100, random_state=42)
     model.fit(X_train, y_train)
-
     return model, X_test, y_test
 
-# Train the model
 model, X_test, y_test = train_model(df)
 
 # --- Home Page ---
 if page == "Home":
-    st.title("🏠 HR & DEI Analytics Dashboard")
-    st.write("This dashboard provides insights into employee attrition, feature importance, and DEI analysis.")
+    st.title("🏠 HR Analytics Dashboard")
+    st.write("A modern dashboard to analyze employee attrition and diversity trends.")
 
     # Show Sample Data
-    st.subheader("Dataset Overview")
+    st.subheader("📋 Dataset Overview")
     st.dataframe(df.head(10))
 
 # --- Attrition Prediction ---
@@ -110,7 +139,7 @@ elif page == "Attrition Prediction":
         predict_button = st.form_submit_button(label='Predict')
 
     if predict_button:
-        salary = [0, 0]  # Default: High Salary
+        salary = [0, 0]
         if salary_category == "low":
             salary = [1, 0]
         elif salary_category == "medium":
@@ -140,30 +169,24 @@ elif page == "Feature Importance":
 elif page == "DEI Metrics":
     st.title("🌍 DEI Analytics")
 
-    # Gender Bias in Attrition
-    st.subheader("Attrition by Gender")
+    st.subheader("📌 Attrition by Gender")
     gender_attrition = df.groupby("gender")["left"].mean()
     st.bar_chart(gender_attrition)
 
-    # Salary vs. Attrition
-    st.subheader("Salary Distribution & Attrition")
+    st.subheader("📌 Salary vs. Attrition")
     salary_attrition = df.groupby("salary")["left"].mean()
     st.bar_chart(salary_attrition)
 
-    # Departmental Diversity
-    st.subheader("Attrition by Department")
+    st.subheader("📌 Attrition by Department")
     dept_attrition = df.groupby("Department")["left"].mean()
     st.bar_chart(dept_attrition)
 
 # --- HR Chatbot ---
 elif page == "HR Chatbot":
     st.title("💬 HR Chatbot (Coming Soon)")
-    st.write("This chatbot will provide insights and answer HR-related questions.")
+    st.write("An AI-powered chatbot for HR insights.")
 
 # --- Generate Report ---
 elif page == "Generate Report":
     st.title("📄 Generate HR Report")
-    st.write("Generate a customized HR and DEI analytics report.")
-
-    if st.button("Download Report"):
-        st.success("Report Downloaded Successfully ✅")
+    st.write("Create a customized HR and DEI analytics report.")

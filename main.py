@@ -7,13 +7,10 @@ import seaborn as sns
 import shap
 import matplotlib.pyplot as plt
 import streamlit as st
-import streamlit.components.v1 as html
 from streamlit_option_menu import option_menu
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, confusion_matrix
-from fpdf import FPDF
-import openai
 import warnings
 
 # --- Streamlit Page Configuration ---
@@ -41,12 +38,20 @@ with st.sidebar:
 def load_data(file_path):
     df = pd.read_csv(file_path)
 
+    # 🔹 Print the exact column names in Streamlit for debugging
+    st.subheader("📌 Columns in the Uploaded Dataset:")
+    st.write(df.columns.tolist())  # Display column names
+
     # 🔹 Normalize column names (lowercase, remove spaces)
     df.columns = df.columns.str.lower().str.replace(" ", "_").str.replace(".", "")
 
-    # 🔹 Rename 'attrition' properly to match dataset
-    if "attrition" not in df.columns and "attrition".capitalize() in df.columns:
-        df.rename(columns={"Attrition": "attrition"}, inplace=True)
+    # 🔹 Check if 'attrition' exists in any format
+    if "attrition" not in df.columns:
+        attrition_variants = [col for col in df.columns if "attrition" in col.lower()]
+        if attrition_variants:
+            correct_attrition_col = attrition_variants[0]  # Get the closest match
+            df.rename(columns={correct_attrition_col: "attrition"}, inplace=True)
+            st.success(f"✔ Automatically renamed '{correct_attrition_col}' to 'attrition'")
 
     df.drop_duplicates(inplace=True)
     df.reset_index(drop=True, inplace=True)
@@ -98,35 +103,3 @@ if page == "Home":
     st.subheader("📉 Attrition Trends Over Time")
     fig = px.line(df, x="years_at_company", y="attrition", title="Attrition Rate by Tenure")
     st.plotly_chart(fig, use_container_width=True)
-
-# --- DEI Metrics ---
-if page == "DEI Metrics":
-    st.header("🌍 Diversity, Equity & Inclusion (DEI) Metrics")
-    st.write("Analyze attrition trends by gender, department, salary, and job satisfaction.")
-
-    required_columns = ["attrition", "gender", "department", "salary"]
-    missing_cols = [col for col in required_columns if col not in df.columns]
-
-    if missing_cols:
-        st.error(f"🚨 Missing Columns: {', '.join(missing_cols)}. Ensure the dataset includes required DEI fields.")
-    else:
-        df["gender"] = df["gender"].map({1: "Female", 2: "Male"})
-        df["department"] = df["department"].map({1: "HR", 2: "R&D", 3: "Sales"})
-
-        # Attrition by Gender
-        st.subheader("📊 Attrition Rate by Gender")
-        fig1 = px.bar(df.groupby("gender")["attrition"].mean().reset_index(), x="gender", y="attrition",
-                      color="gender", title="Attrition Rate by Gender")
-        st.plotly_chart(fig1, use_container_width=True)
-
-        # Attrition by Department
-        st.subheader("🏢 Attrition by Department")
-        fig2 = px.bar(df.groupby("department")["attrition"].mean().reset_index(), x="department", y="attrition",
-                      color="department", title="Attrition Rate by Department")
-        st.plotly_chart(fig2, use_container_width=True)
-
-        # Attrition by Salary
-        st.subheader("💰 Attrition by Salary Level")
-        fig3 = px.box(df, x="attrition", y="salary", color="attrition",
-                      title="Salary Distribution Among Employees Who Left vs Stayed")
-        st.plotly_chart(fig3, use_container_width=True)

@@ -128,29 +128,43 @@ if page == "Attrition Prediction":
     st.header("🔮 Employee Attrition Prediction")
     st.write("Predict whether an employee is likely to stay or leave based on key HR metrics.")
 
+    # Get feature names from the trained model
+    trained_features = X_test.columns.tolist()  # Extract feature names from training set
+
     with st.form("predict_employee_attrition"):
+        # Collect user inputs
         satisfaction_level = st.slider('Satisfaction Level', 0.0, 1.0, 0.5)
         last_evaluation = st.slider('Last Evaluation Score', 0.0, 1.0, 0.6)
         avg_monthly_hours = st.number_input('Average Monthly Hours', min_value=50, max_value=320, step=1, value=160)
         time_in_company = st.number_input('Years at Company', min_value=1, max_value=20, step=1, value=5)
         salary_category = st.selectbox("Salary Level", options=["Low", "Medium", "High"])
 
+        # Submit Button
         predict_button = st.form_submit_button(label='🔍 Predict')
 
         if predict_button:
-            salary_mapping = {"Low": [1, 0], "Medium": [0, 1], "High": [0, 0]}
-            salary_encoded = salary_mapping[salary_category]
-            input_features = np.array([satisfaction_level, last_evaluation, avg_monthly_hours, time_in_company] + salary_encoded).reshape(1, -1)
+            try:
+                # Map Salary to Encoded Values
+                salary_mapping = {"Low": [1, 0], "Medium": [0, 1], "High": [0, 0]}
+                salary_encoded = salary_mapping[salary_category]
 
-            expected_features = X_test.shape[1]
-            input_shape = input_features.shape[1]
+                # Create Feature DataFrame
+                input_data = pd.DataFrame([[satisfaction_level, last_evaluation, avg_monthly_hours, time_in_company] + salary_encoded], 
+                                          columns=["satisfaction_level", "last_evaluation", "average_montly_hours", "time_spend_company", "salary_low", "salary_medium"])
 
-            if input_shape != expected_features:
-                st.error(f"Feature Mismatch! Expected {expected_features} features but got {input_shape}. Please check input fields.")
-            else:
-                prediction_result = model.predict(input_features)[0]
-                prediction_proba = np.round(model.predict_proba(input_features) * 100, 2)
+                # Ensure all columns are present (Align with trained model)
+                for feature in trained_features:
+                    if feature not in input_data.columns:
+                        input_data[feature] = 0  # Add missing features with default value
 
+                # Reorder columns to match training data
+                input_data = input_data[trained_features]
+
+                # Make Prediction
+                prediction_result = model.predict(input_data)[0]
+                prediction_proba = np.round(model.predict_proba(input_data) * 100, 2)
+
+                # Display Results
                 col1, col2 = st.columns(2)
                 if prediction_result == 0:
                     col1.success("✅ Employee is predicted to **STAY**.")
@@ -159,5 +173,8 @@ if page == "Attrition Prediction":
 
                 col2.metric("Probability to Stay", f"{prediction_proba[0, 0]}%")
                 col2.metric("Probability to Leave", f"{prediction_proba[0, 1]}%")
+
+            except Exception as e:
+                st.error(f"Prediction Error: {str(e)}")
 
     st.markdown('</div>', unsafe_allow_html=True)

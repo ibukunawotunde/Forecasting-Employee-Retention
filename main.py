@@ -1,4 +1,4 @@
-# --- Importing ToolKits ---
+# --- Importing Required Libraries ---
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -19,24 +19,6 @@ st.set_page_config(
 )
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
-
-# --- Custom Styling ---
-st.markdown(
-    """
-    <style>
-        .st-emotion-cache-16txtl3 h1 {
-            font: bold 30px Arial;
-            text-align: center;
-            color: #005DAA;
-        }
-        div[data-testid=stSidebarContent] {
-            background-color: #E6EEF8;
-            border-right: 4px solid #005DAA;
-        }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
 
 # --- Sidebar Navigation ---
 with st.sidebar:
@@ -65,20 +47,22 @@ def load_data(file_path):
 
 df = load_data("HR_comma_sep.csv")
 
+# Ensure the dataset contains the necessary column
+if "attrition" not in df.columns:
+    st.error(f"Dataset Error: 'attrition' column is missing. Please check the dataset.\n\nAvailable columns: {list(df.columns)}")
+    st.stop()
+
 # --- Train Model ---
 @st.cache_data
 def train_model(df):
     df = df.copy()
+
+    # Map salary levels to numerical values
     df["salary"] = df["salary"].map({"low": 0, "medium": 1, "high": 2})
 
-    # Ensure only numeric columns are used
+    # Select only numeric columns
     df = df.select_dtypes(include=[np.number])
     df.fillna(df.mean(), inplace=True)
-
-    # Ensure the 'attrition' column is present
-    if "attrition" not in df.columns:
-        st.error("Dataset Error: 'attrition' column is missing. Please check column names.")
-        return None, None, None
 
     X = df.drop("attrition", axis=1)
     y = df["attrition"].astype(int)

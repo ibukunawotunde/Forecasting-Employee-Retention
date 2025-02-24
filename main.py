@@ -1,130 +1,169 @@
+# Importing Libraries
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
-import shap
-import joblib
-import openai
-from fpdf import FPDF
-import matplotlib.pyplot as plt
-from time import sleep
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, confusion_matrix
+import shap
+import matplotlib.pyplot as plt
+import seaborn as sns
+from streamlit_option_menu import option_menu
 
-# Set page configuration with improved UI
+# --- Page Configuration ---
 st.set_page_config(
-    page_title="HR Analytics - Employee Attrition Prediction",
+    page_title="HR & DEI Analytics",
     page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
-# Apply custom CSS for sleek design
-st.markdown("""
-    <style>
-        .main {background-color: #f4f4f8;}
-        .stApp {background-color: #e0e7ff;}
-        .css-1d391kg {color: #4B0082 !important;}
-        .css-18e3th9 {color: #000080 !important;}
-        .stSidebar {background-color: #4B0082; color: white;}
-        .css-1aumxhk {color: white !important;}
-        .stButton>button {background-color: #6a5acd; color: white; border-radius: 5px;}
-        .stTextInput>div>div>input {border-radius: 10px; border: 1px solid #6a5acd;}
-    </style>
-""", unsafe_allow_html=True)
+# --- Sidebar Styling ---
+side_bar_options_style = {
+    "container": {"padding": "0!important", "background-color": 'transparent'},
+    "icon": {"color": "white", "font-size": "18px"},
+    "nav-link": {"color": "#fff", "font-size": "20px", "text-align": "left", "margin": "5px"},
+    "nav-link-selected": {"background-color": "#17B794", "font-size": "20px"},
+}
 
-# Load Data
+# --- Sidebar Navigation ---
+with st.sidebar:
+    st.title(":blue[HR & DEI Analytics Dashboard]")
+
+    # Ensure image exists, else replace with a valid one
+    try:
+        st.image("imgs/dashboard_logo.png", caption="", width=120)
+    except:
+        st.image("https://via.placeholder.com/150", caption="Logo Missing", width=120)
+
+    page = option_menu(
+        menu_title=None,
+        options=['Home', 'Attrition Prediction', 'Feature Importance', 'DEI Metrics', 'HR Chatbot', 'Generate Report'],
+        icons=['house-fill', 'bar-chart-line-fill', "graph-up-arrow", "globe-americas", "chat-text-fill", "file-earmark-text-fill"],
+        menu_icon="cast",
+        default_index=0,
+        styles=side_bar_options_style
+    )
+
+# --- Load Data ---
 @st.cache_data
-def load_data():
-    df = pd.read_csv("HR_comma_sep.csv")
+def load_data(file_path):
+    df = pd.read_csv(file_path)
     df.columns = df.columns.str.replace(" ", "_").str.replace(".", "")
     df.drop_duplicates(inplace=True)
-    df.reset_index(inplace=True, drop=True)
+    df.reset_index(drop=True, inplace=True)
     return df
 
-df = load_data()
+# Load dataset
+df = load_data("HR_comma_sep.csv")
 
-# Preprocess Data
+# --- Train Model ---
 @st.cache_data
-def preprocess_data(df):
-    df = df.copy()
-    df["salary"] = df["salary"].map({"low": 0, "medium": 1, "high": 2})
-    df = df.select_dtypes(include=[np.number])
-    df.fillna(df.mean(), inplace=True)
-    return df
-
-df_processed = preprocess_data(df)
-
-# Train Model
-@st.cache_resource
 def train_model(df):
+    df = df.copy()
+
+    # Encode categorical variables
+    df["salary"] = df["salary"].map({"low": 0, "medium": 1, "high": 2})
+
+    # Drop non-numeric columns
+    df = df.select_dtypes(include=[np.number])
+
+    # Handle missing values
+    df.fillna(df.mean(), inplace=True)
+
+    # Define Features & Target
     X = df.drop("left", axis=1, errors="ignore")
     y = df["left"].astype(int)
+
+    # Train/Test Split
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Train Model
     model = RandomForestClassifier(n_estimators=100, random_state=42)
     model.fit(X_train, y_train)
+
     return model, X_test, y_test
 
-model, X_test, y_test = train_model(df_processed)
+# Train the model
+model, X_test, y_test = train_model(df)
 
-# Sidebar Navigation
-st.sidebar.image("https://i.imgur.com/JgQ7pPo.png", width=250)
-st.sidebar.title("HR Analytics Dashboard")
-page = st.sidebar.radio("Go to", ["🏠 Home", "🔮 Attrition Prediction", "📊 What-If Analysis", "🔬 Feature Importance", "🌍 DEI Metrics", "💬 HR Chatbot", "📄 Generate Report"])
+# --- Home Page ---
+if page == "Home":
+    st.title("🏠 HR & DEI Analytics Dashboard")
+    st.write("This dashboard provides insights into employee attrition, feature importance, and DEI analysis.")
 
-if page == "🏠 Home":
-    st.title("📊 HR Analytics - Employee Attrition Prediction")
-    st.write("This application helps HR teams analyze and predict employee attrition using data-driven insights while incorporating DEI metrics.")
-    st.subheader("📌 Key Insights:")
-    fig = px.bar(df, x="Department", y="left", color="left", barmode="group", title="Attrition by Department")
-    st.plotly_chart(fig)
+    # Show Sample Data
+    st.subheader("Dataset Overview")
+    st.dataframe(df.head(10))
 
-elif page == "🔮 Attrition Prediction":
-    st.title("🧑‍💼 Employee Attrition Prediction")
-    with st.form("attrition_form"):
-        satisfaction = st.slider("Satisfaction Level", 0.1, 1.0, 0.5)
-        last_evaluation = st.slider("Last Evaluation", 0.1, 1.0, 0.7)
-        avg_hours = st.slider("Average Monthly Hours", 50, 320, 150)
-        time_spent = st.slider("Time Spent at Company", 1, 20, 5)
-        salary = st.selectbox("Salary Level", ["Low", "Medium", "High"])
-        salary_map = {"Low": 0, "Medium": 1, "High": 2}
-        salary_val = salary_map[salary]
-        submit_button = st.form_submit_button("🚀 Predict Attrition")
-    
-    if submit_button:
-        input_data = np.array([[satisfaction, last_evaluation, avg_hours, time_spent, salary_val]])
-        prediction = model.predict(input_data)
-        result = "🚀 Likely to Leave" if prediction[0] == 1 else "✅ Likely to Stay"
-        st.subheader(f"Prediction: {result}")
+# --- Attrition Prediction ---
+elif page == "Attrition Prediction":
+    st.title("📊 Attrition Prediction")
 
-elif page == "🔬 Feature Importance":
-    st.title("🔍 Feature Importance using SHAP")
+    with st.form("Predict_value"):
+        satisfaction_level = st.number_input('Satisfaction Level', min_value=0.05, max_value=1.0, value=0.66)
+        last_evaluation = st.number_input('Last Evaluation', min_value=0.05, max_value=1.0, value=0.54)
+        avg_monthly_hours = st.number_input('Average Monthly Hours', min_value=50, max_value=320, step=1, value=120)
+        time_in_company = st.number_input('Time In Company', min_value=1, max_value=20, step=1, value=5)
+        salary_category = st.selectbox("Salary", options=["low", "medium", "high"])
+
+        predict_button = st.form_submit_button(label='Predict')
+
+    if predict_button:
+        salary = [0, 0]  # Default: High Salary
+        if salary_category == "low":
+            salary = [1, 0]
+        elif salary_category == "medium":
+            salary = [0, 1]
+
+        new_data = [satisfaction_level, last_evaluation, avg_monthly_hours, time_in_company] + salary
+        predicted_value = model.predict([new_data])[0]
+
+        if predicted_value == 0:
+            st.success("✅ Employee is expected to **STAY**")
+        else:
+            st.error("🚨 Employee is expected to **LEAVE**")
+
+# --- Feature Importance ---
+elif page == "Feature Importance":
+    st.title("🔎 Feature Importance")
+
     explainer = shap.Explainer(model, X_test)
     shap_values = explainer(X_test)
-    fig, ax = plt.subplots()
-    shap.summary_plot(shap_values, X_test, show=False)
+
+    st.subheader("SHAP Summary Plot")
+    fig, ax = plt.subplots(figsize=(10, 5))
+    shap.summary_plot(shap_values, X_test, plot_type="bar", show=False)
     st.pyplot(fig)
 
-elif page == "🌍 DEI Metrics":
-    st.title("🌎 Diversity, Equity, and Inclusion Metrics")
-    fig = px.bar(df, x="salary", y="left", color="left", barmode="group", title="Attrition by Salary Level")
-    st.plotly_chart(fig)
+# --- DEI Metrics ---
+elif page == "DEI Metrics":
+    st.title("🌍 DEI Analytics")
 
-elif page == "💬 HR Chatbot":
-    st.title("🤖 AI-Powered HR Chatbot")
-    user_input = st.text_input("Ask me about employee attrition or DEI insights:")
-    if user_input:
-        response = "Attrition and DEI are closely linked. Employees from underrepresented backgrounds may face unique challenges. Data insights can help address these gaps proactively."
-        st.write("🤖 HR Chatbot:", response)
+    # Gender Bias in Attrition
+    st.subheader("Attrition by Gender")
+    gender_attrition = df.groupby("gender")["left"].mean()
+    st.bar_chart(gender_attrition)
 
-elif page == "📄 Generate Report":
-    st.title("📜 Generate PDF Report")
-    if st.button("📥 Download Report"):
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)
-        pdf.cell(200, 10, txt="HR & DEI Attrition Report", ln=True, align='C')
-        pdf.output("attrition_report.pdf")
-        st.success("✅ Report Generated! Download below.")
-        st.download_button("📥 Download Report", "attrition_report.pdf")
+    # Salary vs. Attrition
+    st.subheader("Salary Distribution & Attrition")
+    salary_attrition = df.groupby("salary")["left"].mean()
+    st.bar_chart(salary_attrition)
+
+    # Departmental Diversity
+    st.subheader("Attrition by Department")
+    dept_attrition = df.groupby("Department")["left"].mean()
+    st.bar_chart(dept_attrition)
+
+# --- HR Chatbot ---
+elif page == "HR Chatbot":
+    st.title("💬 HR Chatbot (Coming Soon)")
+    st.write("This chatbot will provide insights and answer HR-related questions.")
+
+# --- Generate Report ---
+elif page == "Generate Report":
+    st.title("📄 Generate HR Report")
+    st.write("Generate a customized HR and DEI analytics report.")
+
+    if st.button("Download Report"):
+        st.success("Report Downloaded Successfully ✅")

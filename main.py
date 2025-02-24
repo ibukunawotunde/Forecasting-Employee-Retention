@@ -78,16 +78,19 @@ with st.sidebar:
 @st.cache_data
 def load_data(file_path):
     df = pd.read_csv(file_path)
-    df.columns = df.columns.str.replace(" ", "_").str.replace(".", "").str.upper()
+    
+    # 🔹 Normalize column names to lowercase for consistency
+    df.columns = df.columns.str.replace(" ", "_").str.replace(".", "").str.lower()
+    
     df.drop_duplicates(inplace=True)
     df.reset_index(drop=True, inplace=True)
     return df
 
 df = load_data("HR_comma_sep.csv")
 
-# 🔍 **Check if 'ATTRITION' Column Exists**
-if "ATTRITION" not in df.columns:
-    st.error("Error: The dataset does not contain an 'ATTRITION' column. Please check the dataset column names.")
+# 🔍 **Check if 'attrition' Column Exists**
+if "attrition" not in df.columns:
+    st.error("Error: The dataset does not contain an 'attrition' column. Please check the dataset column names.")
     st.write("Available columns in dataset:", df.columns.tolist())
 
 # --- Train Model ---
@@ -95,15 +98,15 @@ if "ATTRITION" not in df.columns:
 def train_model(df):
     df = df.copy()
     
-    # 🔹 Check if ATTRITION column exists
-    if "ATTRITION" not in df.columns:
-        raise KeyError("The dataset does not contain an 'ATTRITION' column.")
+    # 🔹 Check if "attrition" column exists
+    if "attrition" not in df.columns:
+        raise KeyError("The dataset does not contain an 'attrition' column.")
 
-    df["SALARY"] = df["SALARY"].map({"low": 0, "medium": 1, "high": 2})
+    df["salary"] = df["salary"].map({"low": 0, "medium": 1, "high": 2})
     df = df.select_dtypes(include=[np.number])
     df.fillna(df.mean(), inplace=True)
-    X = df.drop("ATTRITION", axis=1, errors="ignore")
-    y = df["ATTRITION"].astype(int)
+    X = df.drop("attrition", axis=1, errors="ignore")
+    y = df["attrition"].astype(int)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     model = RandomForestClassifier(n_estimators=100, random_state=42)
     model.fit(X_train, y_train)
@@ -130,7 +133,7 @@ if page == "Home":
 
     # Interactive Attrition Trends Chart
     st.subheader("📉 Attrition Trends Over Time")
-    fig = px.line(df, x="YEARS_AT_COMPANY", y="ATTRITION", title="Attrition Rate by Tenure")
+    fig = px.line(df, x="years_at_company", y="attrition", title="Attrition Rate by Tenure")
     st.plotly_chart(fig, use_container_width=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
@@ -142,32 +145,32 @@ if page == "DEI Metrics":
     st.write("Analyze attrition rates by gender, department, job role, salary level, and work-life balance to identify disparities.")
 
     # Ensure required columns exist
-    required_columns = ["ATTRITION", "GENDER", "DEPARTMENT", "MARITAL_STATUS", "DAILY_RATE"]
+    required_columns = ["attrition", "gender", "department", "marital_status", "daily_rate"]
     
     missing_cols = [col for col in required_columns if col not in df.columns]
 
     if missing_cols:
         st.error(f"Missing Columns: {', '.join(missing_cols)}. Please ensure DEI data is available.")
     else:
-        df["GENDER"] = df["GENDER"].map({1: "Female", 2: "Male"})
-        df["DEPARTMENT"] = df["DEPARTMENT"].map({1: "HR", 2: "R&D", 3: "Sales"})
-        df["MARITAL_STATUS"] = df["MARITAL_STATUS"].map({1: "Divorced", 2: "Married", 3: "Single"})
+        df["gender"] = df["gender"].map({1: "Female", 2: "Male"})
+        df["department"] = df["department"].map({1: "HR", 2: "R&D", 3: "Sales"})
+        df["marital_status"] = df["marital_status"].map({1: "Divorced", 2: "Married", 3: "Single"})
 
         # Attrition by Gender
         st.subheader("📊 Attrition Rate by Gender")
-        fig1 = px.bar(df.groupby("GENDER")["ATTRITION"].mean().reset_index(), x="GENDER", y="ATTRITION",
-                      color="GENDER", title="Attrition Rate by Gender")
+        fig1 = px.bar(df.groupby("gender")["attrition"].mean().reset_index(), x="gender", y="attrition",
+                      color="gender", title="Attrition Rate by Gender")
         st.plotly_chart(fig1, use_container_width=True)
 
         # Attrition by Department
         st.subheader("🏢 Attrition by Department")
-        fig2 = px.bar(df.groupby("DEPARTMENT")["ATTRITION"].mean().reset_index(), x="DEPARTMENT", y="ATTRITION",
-                      color="DEPARTMENT", title="Attrition Rate by Department")
+        fig2 = px.bar(df.groupby("department")["attrition"].mean().reset_index(), x="department", y="attrition",
+                      color="department", title="Attrition Rate by Department")
         st.plotly_chart(fig2, use_container_width=True)
 
         # Attrition by Salary
         st.subheader("💰 Attrition by Salary Level")
-        fig3 = px.box(df, x="ATTRITION", y="DAILY_RATE", color="ATTRITION",
+        fig3 = px.box(df, x="attrition", y="daily_rate", color="attrition",
                       title="Salary Distribution Among Employees Who Left vs Stayed")
         st.plotly_chart(fig3, use_container_width=True)
 

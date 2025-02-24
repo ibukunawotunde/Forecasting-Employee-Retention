@@ -18,21 +18,21 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- Custom CSS Styling for a Sleek, Modern UI ---
+# --- Custom CSS Styling for Better Readability & Modern Look ---
 st.markdown(
     """
     <style>
-        /* Overall App Styling */
+        /* Background & App Container */
         .stApp {
-            background: linear-gradient(to right, #0072C6, #004A8F);
+            background-color: #1E1E1E;  /* Dark Gray for better contrast */
             color: white;
         }
 
         /* Sidebar Styling */
         div[data-testid="stSidebar"] {
-            background-color: #1E1E1E;
-            padding: 25px;
-            border-right: 3px solid #17B794;
+            background-color: #2C3E50;  /* Dark Navy Blue for sidebar */
+            padding: 20px;
+            border-right: 4px solid #17B794;
         }
         
         div[data-testid="stSidebarContent"] {
@@ -44,14 +44,22 @@ st.markdown(
         .css-1v0mbdj p, .css-1v0mbdj a {
             font-size: 20px;
             font-weight: bold;
+            color: white !important;
+        }
+
+        /* Main Content Background */
+        .main-container {
+            background-color: #F0F0F0;  /* Light Gray for content area */
+            padding: 20px;
+            border-radius: 12px;
         }
 
         /* Centered Titles */
         .st-emotion-cache-1h1ov1w h1 {
             text-align: center;
-            font-size: 32px;
+            font-size: 30px;
             font-weight: bold;
-            text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.3);
+            color: #0072C6;  /* Genentech Blue for headings */
         }
 
         /* Primary Buttons */
@@ -84,7 +92,7 @@ st.markdown(
 
 # --- Sidebar Menu ---
 with st.sidebar:
-    st.title(":blue[HR Analytics Dashboard]")
+    st.title("HR Analytics Dashboard")
 
     # Sidebar Navigation Menu
     page = option_menu(
@@ -130,15 +138,16 @@ model, X_test, y_test = train_model(df)
 
 # --- Home Page ---
 if page == "Home":
+    st.markdown('<div class="main-container">', unsafe_allow_html=True)
     st.title("🏠 HR Analytics Dashboard")
     st.write("A modern dashboard to analyze employee attrition and diversity trends.")
-
-    # Show Sample Data
     st.subheader("📋 Dataset Overview")
     st.dataframe(df.head(10))
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # --- Attrition Prediction ---
 elif page == "Attrition Prediction":
+    st.markdown('<div class="main-container">', unsafe_allow_html=True)
     st.title("📊 Attrition Prediction")
 
     with st.form("Predict_value"):
@@ -165,8 +174,11 @@ elif page == "Attrition Prediction":
         else:
             st.error("🚨 Employee is expected to **LEAVE**")
 
+    st.markdown('</div>', unsafe_allow_html=True)
+
 # --- Feature Importance ---
 elif page == "Feature Importance":
+    st.markdown('<div class="main-container">', unsafe_allow_html=True)
     st.title("🔎 Feature Importance")
 
     explainer = shap.Explainer(model, X_test)
@@ -176,3 +188,4 @@ elif page == "Feature Importance":
     fig, ax = plt.subplots(figsize=(10, 5))
     shap.summary_plot(shap_values, X_test, plot_type="bar", show=False)
     st.pyplot(fig)
+    st.markdown('</div>', unsafe_allow_html=True)

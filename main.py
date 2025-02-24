@@ -1,4 +1,4 @@
-# Importing Libraries
+# --- Importing Libraries ---
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -18,51 +18,63 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- Custom CSS Styling for a Modern Look ---
+# --- Custom CSS Styling for a Sleek, Modern UI ---
 st.markdown(
     """
     <style>
-        /* Background Gradient */
+        /* Overall App Styling */
         .stApp {
             background: linear-gradient(to right, #0072C6, #004A8F);
             color: white;
         }
 
-        /* Sidebar Customization */
+        /* Sidebar Styling */
         div[data-testid="stSidebar"] {
             background-color: #1E1E1E;
-            padding: 20px;
+            padding: 25px;
+            border-right: 3px solid #17B794;
         }
+        
         div[data-testid="stSidebarContent"] {
             color: white;
             font-size: 18px;
         }
 
-        /* Sidebar Menu Text Styling */
+        /* Sidebar Menu Items */
         .css-1v0mbdj p, .css-1v0mbdj a {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: bold;
         }
 
         /* Centered Titles */
         .st-emotion-cache-1h1ov1w h1 {
             text-align: center;
-            font-size: 30px;
+            font-size: 32px;
             font-weight: bold;
+            text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.3);
         }
 
-        /* Buttons & Forms */
+        /* Primary Buttons */
         div[data-testid="stFormSubmitButton"] > button {
             width: 100%;
-            background-color: #0072C6;
+            background: linear-gradient(90deg, #17B794, #0072C6);
             border: none;
-            padding: 12px;
-            border-radius: 8px;
+            padding: 14px;
+            border-radius: 10px;
             color: white;
-            font-size: 16px;
+            font-size: 18px;
+            transition: 0.3s ease-in-out;
         }
         div[data-testid="stFormSubmitButton"] > button:hover {
-            background-color: #004A8F;
+            background: linear-gradient(90deg, #0072C6, #17B794);
+        }
+
+        /* Chart Styling */
+        .plot-container.plotly {
+            border-radius: 10px;
+            padding: 10px;
+            background: white;
+            box-shadow: 3px 3px 15px rgba(0, 0, 0, 0.2);
         }
 
     </style>
@@ -70,7 +82,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- Sidebar Menu (Updated without Missing Logo) ---
+# --- Sidebar Menu ---
 with st.sidebar:
     st.title(":blue[HR Analytics Dashboard]")
 
@@ -83,9 +95,9 @@ with st.sidebar:
         default_index=0,
         styles={
             "container": {"padding": "0!important", "background-color": "transparent"},
-            "icon": {"color": "white", "font-size": "18px"},
-            "nav-link": {"color": "white", "font-size": "20px", "text-align": "left", "margin": "5px"},
-            "nav-link-selected": {"background-color": "#17B794", "font-size": "20px"},
+            "icon": {"color": "white", "font-size": "22px"},
+            "nav-link": {"color": "white", "font-size": "22px", "text-align": "left", "margin": "8px"},
+            "nav-link-selected": {"background-color": "#17B794", "font-size": "22px"},
         }
     )
 
@@ -164,29 +176,3 @@ elif page == "Feature Importance":
     fig, ax = plt.subplots(figsize=(10, 5))
     shap.summary_plot(shap_values, X_test, plot_type="bar", show=False)
     st.pyplot(fig)
-
-# --- DEI Metrics ---
-elif page == "DEI Metrics":
-    st.title("🌍 DEI Analytics")
-
-    st.subheader("📌 Attrition by Gender")
-    gender_attrition = df.groupby("gender")["left"].mean()
-    st.bar_chart(gender_attrition)
-
-    st.subheader("📌 Salary vs. Attrition")
-    salary_attrition = df.groupby("salary")["left"].mean()
-    st.bar_chart(salary_attrition)
-
-    st.subheader("📌 Attrition by Department")
-    dept_attrition = df.groupby("Department")["left"].mean()
-    st.bar_chart(dept_attrition)
-
-# --- HR Chatbot ---
-elif page == "HR Chatbot":
-    st.title("💬 HR Chatbot (Coming Soon)")
-    st.write("An AI-powered chatbot for HR insights.")
-
-# --- Generate Report ---
-elif page == "Generate Report":
-    st.title("📄 Generate HR Report")
-    st.write("Create a customized HR and DEI analytics report.")

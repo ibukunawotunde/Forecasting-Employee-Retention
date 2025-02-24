@@ -2,16 +2,16 @@
 
 Using a Machine Learning <u>RandomForest</u> Model to Predict If The Employee Will Leave His/Her Job Or Nor From a Features like(Satisfaction Level, Last Evaluation Score, Average Monthly Hours, Time In Company, Salary)
 
-### Web App Link: <a href = "https://forecasting-employee-retention-anvfmkczqt9n7fbdkkpz3e.streamlit.app/" target="_blank" style = "color: tomato">Click Here To Visit Streamlit Web App</a>🥰📊
+### Web App Link: <a href = "https://forecasting-employee-retention-anvfmkczqt9n7fbdkkpz3e.streamlit.app/" target="_blank" style = "color: tomato">Click Here To Visit Streamlit Web App</a>📊
 
-### Kaggle Notebook For Main Steps: <a href = "https://www.kaggle.com/code/muhammadehabmuhammad/forecasting-employee-retention-streamlit-app" target="_blank" style = "color: tomato">Click Here To Visit Kaggle Notebbok</a>🥰📊
+### Kaggle Notebook For Main Steps: <a href = "https://www.kaggle.com/code/muhammadehabmuhammad/forecasting-employee-retention-streamlit-app" target="_blank" style = "color: tomato">Click Here To Visit Kaggle Notebbok</a>📊
 
 ## Steps To Create The Model
 #### 👨‍💼 Getting rid of duplicates and nulls values 🧹
-#### 👨‍💼 Conducting a little data exploration 🧐
+#### 👨‍💼 Conducting a little data exploration 
 #### 👨‍💼 Asking a couple of questions and getting insight via charts form 
 #### 👨‍💼 Choosing a model and fitting the data into our model.
-#### 👨‍💼 Testing our model 😉
+#### 👨‍💼 Testing our model 
 
 <hr>
 

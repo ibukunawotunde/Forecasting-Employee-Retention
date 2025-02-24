@@ -30,8 +30,8 @@ with st.sidebar:
     st.title("HR Analytics Dashboard")
     page = option_menu(
         menu_title=None,
-        options=['Home', 'Attrition Prediction', 'Feature Importance', 'DEI Metrics', 'HR Chatbot', 'Generate Report'],
-        icons=['house-fill', 'bar-chart-line-fill', "graph-up-arrow", "globe-americas", "chat-text-fill", "file-earmark-text-fill"],
+        options=['Home', 'Attrition Prediction', 'DEI Metrics', 'HR Chatbot', 'Generate Report'],
+        icons=['house-fill', 'bar-chart-line-fill', "globe-americas", "chat-text-fill", "file-earmark-text-fill"],
         menu_icon="cast",
         default_index=0
     )

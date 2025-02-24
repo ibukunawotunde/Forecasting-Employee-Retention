@@ -14,7 +14,7 @@ from sklearn.metrics import accuracy_score, classification_report
 
 # Set page configuration with improved UI
 st.set_page_config(
-    page_title="HR & DEI Analytics - Employee Attrition Prediction",
+    page_title="HR Analytics - Employee Attrition Prediction",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -70,11 +70,11 @@ model, X_test, y_test = train_model(df_processed)
 
 # Sidebar Navigation
 st.sidebar.image("https://i.imgur.com/JgQ7pPo.png", width=250)
-st.sidebar.title("HR & DEI Analytics Dashboard")
+st.sidebar.title("HR Analytics Dashboard")
 page = st.sidebar.radio("Go to", ["🏠 Home", "🔮 Attrition Prediction", "📊 What-If Analysis", "🔬 Feature Importance", "🌍 DEI Metrics", "💬 HR Chatbot", "📄 Generate Report"])
 
 if page == "🏠 Home":
-    st.title("📊 HR & DEI Analytics - Employee Attrition Prediction")
+    st.title("📊 HR Analytics - Employee Attrition Prediction")
     st.write("This application helps HR teams analyze and predict employee attrition using data-driven insights while incorporating DEI metrics.")
     st.subheader("📌 Key Insights:")
     fig = px.bar(df, x="Department", y="left", color="left", barmode="group", title="Attrition by Department")

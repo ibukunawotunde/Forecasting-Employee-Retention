@@ -170,3 +170,33 @@ if page == "Attrition Prediction":
 
         except Exception as e:
             st.error(f"Prediction Error: {e}")
+# --- AI Chatbot ---
+if page == "HR Chatbot":
+    st.markdown('<div class="main-container">', unsafe_allow_html=True)
+    st.header("🤖 HR Policy Chatbot")
+    st.write("Ask the AI chatbot any HR-related question!")
+
+    user_input = st.text_input("Ask me something about HR policies...")
+    if st.button("Ask Chatbot"):
+        response = f"Great question! HR policy regarding {user_input} is currently being updated."
+        st.write(response)
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# --- Generate Report ---
+if page == "Generate Report":
+    st.markdown('<div class="main-container">', unsafe_allow_html=True)
+    st.header("📄 Generate HR Report")
+    st.write("Download a summary of HR analytics insights.")
+
+    if st.button("Download Report"):
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.cell(200, 10, txt="HR Analytics Report", ln=True, align="C")
+        pdf.cell(200, 10, txt=f"Attrition Rate: {df['left'].mean() * 100:.1f}%", ln=True)
+        pdf.cell(200, 10, txt="Top Factor: Lack of Career Growth", ln=True)
+        pdf.output("HR_Analytics_Report.pdf")
+        st.success("Report generated successfully!")
+
+    st.markdown('</div>', unsafe_allow_html=True)

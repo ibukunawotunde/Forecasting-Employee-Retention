@@ -68,8 +68,8 @@ with st.sidebar:
     st.title("HR Analytics Dashboard")
     page = option_menu(
         menu_title=None,
-        options=['Home', 'Attrition Prediction', 'DEI Metrics', 'HR Chatbot', 'Generate Report'],
-        icons=['house-fill', 'bar-chart-line-fill', "globe-americas", "chat-text-fill", "file-earmark-text-fill"],
+        options=['Home', 'Attrition Prediction', 'Feature Importance', 'DEI Metrics', 'HR Chatbot', 'Generate Report'],
+        icons=['house-fill', 'bar-chart-line-fill', "graph-up-arrow", "globe-americas", "chat-text-fill", "file-earmark-text-fill"],
         menu_icon="cast",
         default_index=0
     )
@@ -81,12 +81,6 @@ def load_data(file_path):
     df.columns = df.columns.str.replace(" ", "_").str.replace(".", "")
     df.drop_duplicates(inplace=True)
     df.reset_index(drop=True, inplace=True)
-
-    # Ensure correct column name usage
-    if "left" not in df.columns:
-        st.error("Error: The dataset does not contain a 'left' column. Please check the dataset column names.")
-        st.stop()
-
     return df
 
 df = load_data("HR_comma_sep.csv")
@@ -117,8 +111,8 @@ if page == "Home":
     # Quick Metrics
     st.subheader("📊 Quick HR Metrics")
     col1, col2, col3 = st.columns(3)
-    col1.metric("Attrition Rate", f"{df['left'].mean() * 100:.1f}%", "⬆ 5% from last year")
-    col2.metric("Avg. Satisfaction Score", f"{df['satisfaction_level'].mean() * 100:.1f}%", "⬆ 3%")
+    col1.metric("Attrition Rate", "23%", "⬆ 5% from last year")
+    col2.metric("Avg. Satisfaction Score", "72%", "⬆ 3%")
     col3.metric("Top Attrition Factor", "Lack of Career Growth", "🔍 Insights Available")
 
     # Interactive Attrition Trends Chart
@@ -126,41 +120,47 @@ if page == "Home":
     fig = px.line(df, x="time_spend_company", y="left", title="Attrition Rate by Tenure")
     st.plotly_chart(fig, use_container_width=True)
 
-    # Employee Search (HR Lookup)
-    st.subheader("🔎 Employee Search")
-    emp_id = st.text_input("Enter Employee ID:")
-    if emp_id:
-        st.write(f"Employee {emp_id} is currently **Active**")
-
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- AI Chatbot ---
-if page == "HR Chatbot":
+# --- Attrition Prediction Page ---
+if page == "Attrition Prediction":
     st.markdown('<div class="main-container">', unsafe_allow_html=True)
-    st.header("🤖 HR Policy Chatbot")
-    st.write("Ask the AI chatbot any HR-related question!")
+    st.header("🔍 Predict Employee Attrition")
 
-    user_input = st.text_input("Ask me something about HR policies...")
-    if st.button("Ask Chatbot"):
-        response = f"Great question! HR policy regarding {user_input} is currently being updated."
-        st.write(response)
+    # User Input Form
+    with st.form("Prediction_Form"):
+        satisfaction_level = st.slider('Satisfaction Level', 0.0, 1.0, 0.5)
+        last_evaluation = st.slider('Last Evaluation Score', 0.0, 1.0, 0.6)
+        number_project = st.slider("Number of Projects", 1, 10, 4)
+        average_montly_hours = st.number_input("Average Monthly Hours", min_value=50, max_value=400, value=160)
+        time_spend_company = st.slider("Years at Company", 1, 20, 5)
+        work_accident = st.selectbox("Work Accident", [0, 1])
+        promotion_last_5years = st.selectbox("Promotion in Last 5 Years", [0, 1])
+        department = st.selectbox("Department", df["department"].unique())
+        salary = st.selectbox("Salary Level", df["salary"].unique())
 
-    st.markdown('</div>', unsafe_allow_html=True)
+        predict_button = st.form_submit_button("Predict Attrition")
 
-# --- Generate Report ---
-if page == "Generate Report":
-    st.markdown('<div class="main-container">', unsafe_allow_html=True)
-    st.header("📄 Generate HR Report")
-    st.write("Download a summary of HR analytics insights.")
+    if predict_button:
+        # Encoding Categorical Variables
+        department_encoded = [1 if department == dept else 0 for dept in df["department"].unique()]
+        salary_encoded = [1 if salary == sal else 0 for sal in df["salary"].unique()]
 
-    if st.button("Download Report"):
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)
-        pdf.cell(200, 10, txt="HR Analytics Report", ln=True, align="C")
-        pdf.cell(200, 10, txt=f"Attrition Rate: {df['left'].mean() * 100:.1f}%", ln=True)
-        pdf.cell(200, 10, txt="Top Factor: Lack of Career Growth", ln=True)
-        pdf.output("HR_Analytics_Report.pdf")
-        st.success("Report generated successfully!")
+        # Constructing Feature Input
+        input_features = [
+            satisfaction_level, last_evaluation, number_project,
+            average_montly_hours, time_spend_company, work_accident,
+            promotion_last_5years
+        ] + department_encoded + salary_encoded
+
+        # Make Prediction
+        prediction_result = model.predict([input_features])[0]
+        prediction_prob = model.predict_proba([input_features])[0]
+
+        # Display Result
+        if prediction_result == 1:
+            st.error(f"⚠️ High Risk: Employee is likely to leave! (Probability: {prediction_prob[1]*100:.2f}%)")
+        else:
+            st.success(f"✅ Low Risk: Employee is likely to stay. (Probability: {prediction_prob[0]*100:.2f}%)")
 
     st.markdown('</div>', unsafe_allow_html=True)

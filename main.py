@@ -34,8 +34,10 @@ df = load_data()
 def train_model(df):
     df = df.copy()
     df["salary"] = df["salary"].map({"low": 0, "medium": 1, "high": 2})
-    X = df.drop("left", axis=1)
-    y = df["left"]
+    df = df.select_dtypes(include=[np.number])
+    df.fillna(df.mean(), inplace=True)
+    X = df.drop("left", axis=1, errors="ignore")
+    y = df["left"].astype(int)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     model = RandomForestClassifier(n_estimators=100, random_state=42)
     model.fit(X_train, y_train)

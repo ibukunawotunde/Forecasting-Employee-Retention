@@ -78,18 +78,28 @@ with st.sidebar:
 @st.cache_data
 def load_data(file_path):
     df = pd.read_csv(file_path)
-    df.columns = df.columns.str.replace(" ", "_").str.replace(".", "")
+    df.columns = df.columns.str.replace(" ", "_").str.replace(".", "").str.upper()
     df.drop_duplicates(inplace=True)
     df.reset_index(drop=True, inplace=True)
     return df
 
 df = load_data("HR_comma_sep.csv")
 
+# 🔍 **Check if 'ATTRITION' Column Exists**
+if "ATTRITION" not in df.columns:
+    st.error("Error: The dataset does not contain an 'ATTRITION' column. Please check the dataset column names.")
+    st.write("Available columns in dataset:", df.columns.tolist())
+
 # --- Train Model ---
 @st.cache_data
 def train_model(df):
     df = df.copy()
-    df["salary"] = df["salary"].map({"low": 0, "medium": 1, "high": 2})
+    
+    # 🔹 Check if ATTRITION column exists
+    if "ATTRITION" not in df.columns:
+        raise KeyError("The dataset does not contain an 'ATTRITION' column.")
+
+    df["SALARY"] = df["SALARY"].map({"low": 0, "medium": 1, "high": 2})
     df = df.select_dtypes(include=[np.number])
     df.fillna(df.mean(), inplace=True)
     X = df.drop("ATTRITION", axis=1, errors="ignore")
@@ -99,7 +109,10 @@ def train_model(df):
     model.fit(X_train, y_train)
     return model, X_test, y_test
 
-model, X_test, y_test = train_model(df)
+try:
+    model, X_test, y_test = train_model(df)
+except KeyError as e:
+    st.error(f"Dataset Error: {e}")
 
 # --- Home Page ---
 if page == "Home":
@@ -158,27 +171,4 @@ if page == "DEI Metrics":
                       title="Salary Distribution Among Employees Who Left vs Stayed")
         st.plotly_chart(fig3, use_container_width=True)
 
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# --- AI Chatbot ---
-if page == "HR Chatbot":
-    st.markdown('<div class="main-container">', unsafe_allow_html=True)
-    st.header("🤖 HR Policy Chatbot")
-    user_input = st.text_input("Ask me something about HR policies...")
-    if st.button("Ask Chatbot"):
-        response = f"Great question! HR policy regarding {user_input} is currently being updated."
-        st.write(response)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# --- Generate Report ---
-if page == "Generate Report":
-    st.markdown('<div class="main-container">', unsafe_allow_html=True)
-    st.header("📄 Generate HR Report")
-    if st.button("Download Report"):
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)
-        pdf.cell(200, 10, txt="HR Analytics Report", ln=True, align="C")
-        pdf.output("HR_Analytics_Report.pdf")
-        st.success("Report generated successfully!")
     st.markdown('</div>', unsafe_allow_html=True)

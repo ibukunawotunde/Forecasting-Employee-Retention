@@ -139,6 +139,45 @@ if page == "DEI Metrics":
 
     st.markdown('</div>', unsafe_allow_html=True)
 
+# --- Attrition Prediction ---
+if page == "Attrition Prediction":
+    st.header("🔍 Predict Employee Attrition")
+
+    with st.form("Prediction_Form"):
+        st.subheader("Enter Employee Details:")
+        
+        satisfaction_level = st.slider('Satisfaction Level', 0.0, 1.0, 0.5)
+        last_evaluation = st.slider('Last Evaluation Score', 0.0, 1.0, 0.6)
+        number_project = st.slider("Number of Projects", 1, 10, 4)
+        average_montly_hours = st.number_input("Average Monthly Hours", min_value=50, max_value=400, value=160)
+        time_spend_company = st.slider("Years at Company", 1, 20, 5)
+        work_accident = st.selectbox("Work Accident", [0, 1])
+        promotion_last_5years = st.selectbox("Promotion in Last 5 Years", [0, 1])
+        salary = st.selectbox("Salary Level", ["low", "medium", "high"])
+
+        predict_button = st.form_submit_button("Predict Attrition")
+
+    if predict_button:
+        try:
+            salary_encoded = {"low": 0, "medium": 1, "high": 2}[salary]
+
+            input_features = np.array([
+                satisfaction_level, last_evaluation, number_project,
+                average_montly_hours, time_spend_company, work_accident,
+                promotion_last_5years, salary_encoded
+            ]).reshape(1, -1)
+
+            prediction_result = model.predict(input_features)[0]
+            prediction_prob = model.predict_proba(input_features)[0]
+
+            if prediction_result == 1:
+                st.error(f"⚠️ High Risk: Employee is likely to leave! (Probability: {prediction_prob[1]*100:.2f}%)")
+            else:
+                st.success(f"✅ Low Risk: Employee is likely to stay. (Probability: {prediction_prob[0]*100:.2f}%)")
+
+        except Exception as e:
+            st.error(f"Prediction Error: {e}")
+            
 # --- AI Chatbot ---
 if page == "HR Chatbot":
     st.markdown('<div class="main-container">', unsafe_allow_html=True)
